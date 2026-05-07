@@ -1,4 +1,6 @@
-# SyncPad
+ 
+## 🚀 SyncPad
+
 
 Real-time collaborative code editor using CRDTs.
 
