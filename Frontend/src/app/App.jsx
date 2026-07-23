@@ -14,7 +14,9 @@ function App(){
 
 
   const editorRef = useRef(null)
-  const [ username, setUsername ] = useState("")
+  const [ username, setUsername ] = useState(()=>{
+    return new URLSearchParams(window.location.search).get("username") || ""
+  })
 
   const ydoc = useMemo(() => new Y.Doc(), [])
   const ytext = useMemo(() => ydoc.getText("monaco"), [ydoc])
@@ -34,9 +36,9 @@ function App(){
   }
 
   const handleJoin = (e) => {
-
     e.preventDefault()
     setUsername(e.target.username.value)
+    window.history.pushState({},"","?username=" + e.target.username.value)
 
   }
 
