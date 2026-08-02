@@ -1,7 +1,7 @@
 import "./App.css"
 import { Editor } from "@monaco-editor/react"
 import { MonacoBinding } from "y-monaco"
-import { useRef, useMemo, useState } from "react"
+import { useRef, useMemo, useState, useEffect } from "react"
 import * as Y from "yjs"
 import { SocketIOProvider } from "y-socket.io"
 
@@ -18,21 +18,14 @@ function App(){
     return new URLSearchParams(window.location.search).get("username") || ""
   })
 
+  const [users, setUsers] = useState([])
+
   const ydoc = useMemo(() => new Y.Doc(), [])
   const ytext = useMemo(() => ydoc.getText("monaco"), [ydoc])
 
   const handleMount = (editor) => {
     editorRef.current = editor
 
-    const provider = new SocketIOProvider("http://localhost:3000", "monaco-demo", ydoc, {
-      autoConnect: true,
-    })
-
-    const monacoBinding = new MonacoBinding(
-      ytext,
-      editorRef.current.getModel(),
-      new Set([editorRef.current]),
-       provider.awareness)
   }
 
   const handleJoin = (e) => {
@@ -41,6 +34,50 @@ function App(){
     window.history.pushState({},"","?username=" + e.target.username.value)
 
   }
+
+  useEffect(()=>{
+
+    if(username && editorRef.current){
+
+      const provider = new SocketIOProvider("http://localhost:3000", "monaco-demo", ydoc, {
+      autoConnect: true,
+    })
+
+    provider.awareness.setLocalStateField("user", {username})
+    provider.awareness.on("change", ()=>{
+
+      const states = Array.from(provider.awareness.getStates().values())
+      setUsers(states.filter(user => user && user.username).map(state => state.user))
+      
+    })
+
+
+    function handleBeforeUnload(){
+      provider.awareness.setLocalStateField("user", null)
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+
+
+    const monacoBinding = new MonacoBinding(
+      ytext,
+      editorRef.current.getModel(),
+      new Set([editorRef.current]),
+       provider.awareness)
+
+    }
+
+    return ()=> {
+      monacoBinding.destroy()
+      provider.disconnect()
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+
+  },
+  [
+    editorRef.current,
+    username
+  ])
 
  if(!username){
   return(
@@ -71,7 +108,16 @@ function App(){
     >
     <aside
       className="h-full w-1/4 bg-amber-50 rounded-lg"
-    ></aside>
+    >
+      <h2 classname="test-2xl font-bold p-4 border-b border-gray-300"></h2>
+      <ul className="p-4">
+        {users.map((user, index) => {
+          <li key={index} className="p-2 bg-gray-800 text-white rounded mb-2">
+            {user.username}
+          </li>
+        })}
+      </ul>
+    </aside>
     <section
     className="w-3/4 bg-neutral-800 rounded-lg overflow-hidden">
     <Editor
